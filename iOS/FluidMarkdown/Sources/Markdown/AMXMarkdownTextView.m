@@ -30,6 +30,32 @@ static AMXMarkdownTextView* _caculateContentView;
 @property (atomic, strong) NSString    *contentStr;
 @end
 
+static NSString *AMXRegularExpressionString(NSString *text) {
+    if (text.length == 0) { return text; }
+    NSMutableString *normalized = [text mutableCopy];
+    NSError *error = nil;
+    NSRegularExpression *alignRegex = [NSRegularExpression regularExpressionWithPattern:@"\\{align\\*\\}"
+                                                                               options:0
+                                                                                 error:&error];
+    if (alignRegex && !error) {
+        [alignRegex replaceMatchesInString:normalized
+                                   options:0
+                                     range:NSMakeRange(0, normalized.length)
+                              withTemplate:@"{align}"];
+    }
+    error = nil;
+    NSRegularExpression *closingRegex = [NSRegularExpression regularExpressionWithPattern:@"\\\\](?!\\n)"
+                                                                                  options:0
+                                                                                    error:&error];
+    if (closingRegex && !error) {
+        [closingRegex replaceMatchesInString:normalized
+                                     options:0
+                                       range:NSMakeRange(0, normalized.length)
+                                withTemplate:@"$0\n"];
+    }
+    return normalized;
+}
+
 @implementation AMXMarkdownTextView
 - (instancetype)initWithFrame_ant_mark:(CGRect)frame {
     if (self = [super initWithFrame_ant_mark:frame delegate:self]) {
@@ -61,8 +87,14 @@ static AMXMarkdownTextView* _caculateContentView;
                                                      name:AMTextAttachmentSizeDidUpdateNotification
                                                    object:nil];
         [self addGestureRecognizer:tap];
+        _regularExpressionEnabled = YES;
     }
     return self;
+}
+
+- (NSString *)amx_normalizedInlineMathIfNeeded:(NSString *)text {
+    if (!self.regularExpressionEnabled || text.length == 0) { return text; }
+    return AMXRegularExpressionString(text);
 }
 -(void)setStyleId:(NSString *)styleId
 {
@@ -71,6 +103,7 @@ static AMXMarkdownTextView* _caculateContentView;
 }
 - (void)renderCompleteContent:(NSString *)text
 {
+    text = [self amx_normalizedInlineMathIfNeeded:text];
     NSMutableAttributedString* attrStr = [self markdowmMutableAttributedStringFromValue:text];
     [AMXMarkdownHelper setImageAttachListener:attrStr delegate:self];
     [self setAttributedTextPartialUpdate_ant_mark:attrStr];
@@ -78,6 +111,7 @@ static AMXMarkdownTextView* _caculateContentView;
 }
 - (void)startStreamingWithContent:(NSString*)content
 {
+    content = [self amx_normalizedInlineMathIfNeeded:content];
     if (self.state != AMXMarkdownPrintStateStopped && self.state != AMXMarkdownPrintStateInitial) {
         NSError* error = [NSError errorWithDomain:@"AMStreamPrinter"
                                              code:1001
@@ -100,10 +134,11 @@ static AMXMarkdownTextView* _caculateContentView;
 }
 - (void)startStreamingWithContent:(NSString*)content printIndex:(NSInteger)printIndex
 {
-    if (printIndex >= (content.length - 1)) {
-        [self renderCompleteContent:content];
-        return;
-    }
+    content = [self amx_normalizedInlineMathIfNeeded:content];
+//    if (printIndex >= (content.length - 1)) {
+//        [self renderCompleteContent:content];
+//        return;
+//    }
     if (self.state != AMXMarkdownPrintStateStopped && self.state != AMXMarkdownPrintStateInitial) {
         NSError* error = [NSError errorWithDomain:@"AMStreamPrinter"
                                              code:1001
@@ -131,7 +166,8 @@ static AMXMarkdownTextView* _caculateContentView;
     if (self.state != AMXMarkdownPrintStateRunning && self.state != AMXMarkdownPrintStatePaused) {
         return;
     }
-    self.contentStr = [self.contentStr stringByAppendingString:text];
+    NSString *appended = [self.contentStr stringByAppendingString:text ?: @""];
+    self.contentStr = [self amx_normalizedInlineMathIfNeeded:appended];
     self.preloadMarkdownAttrStr = [self markdowmMutableAttributedStringFromValue:self.contentStr];
     if (self.state == AMXMarkdownPrintStatePaused) {
         [self resume];
@@ -149,6 +185,7 @@ static AMXMarkdownTextView* _caculateContentView;
         __strong typeof(weakSelf) strongSelf = weakSelf;
         // render all data without animation to remove the animation maksk layer
         [strongSelf setAttributedTextPartialUpdate_ant_mark:strongSelf.preloadMarkdownAttrStr];
+        [strongSelf updateSize];
     });
 }
 - (void)resume
@@ -235,7 +272,7 @@ static AMXMarkdownTextView* _caculateContentView;
     
     dispatch_async_on_main_queue(^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        [strongSelf setAttributedTextPartialUpdate_ant_mark:attrStr animated:YES];
+        [strongSelf setAttributedTextPartialUpdate_ant_mark:attrStr animated:NO];
         [strongSelf updateSize];
     });
 }
@@ -449,6 +486,10 @@ static AMXMarkdownTextView* _caculateContentView;
     [super willRemoveSubview:subview];
 }
 
+- (void)tapImageWithAttachment:(nonnull NSTextAttachment *)attachment {
+    CMImageTextAttachment *imageAttach = (CMImageTextAttachment *)attachment;
+
+}
 
 - (void)handleTap:(UITapGestureRecognizer *)gesture {
     CGPoint tapLocation = [gesture locationInView:gesture.view];
@@ -474,6 +515,9 @@ static AMXMarkdownTextView* _caculateContentView;
         NSDictionary *attributes = [attributedText attributesAtIndex:tappedCharacterIndex
                                                       effectiveRange:&range];
         NSTextAttachment *attachment = attributes[NSAttachmentAttributeName];
+        if(attachment && [attachment isKindOfClass:[CMImageTextAttachment class]]) {
+            [self tapImageWithAttachment:attachment];
+        }
         id linkValue = attributes[NSLinkAttributeName];
         if (![self.textViewDelegate respondsToSelector:@selector(onTap:content:gesture:attachment:tapIndex:attrString:)]) {
             return;
@@ -530,6 +574,9 @@ static AMXMarkdownTextView* _caculateContentView;
         NSDictionary *attributes = [attributedText attributesAtIndex:tappedCharacterIndex
                                                       effectiveRange:&range];
         NSTextAttachment *attachment = attributes[NSAttachmentAttributeName];
+        if(attachment && [attachment isKindOfClass:[CMImageTextAttachment class]]) {
+            [self tapImageWithAttachment:attachment];
+        }
         id linkValue = attributes[NSLinkAttributeName];
         if (![self.textViewDelegate respondsToSelector:@selector(onTap:content:gesture:attachment:tapIndex:attrString:)]) {
             return;

@@ -41,7 +41,12 @@ bufsize_t _ext_scan_at(bufsize_t (*scanner)(const unsigned char *), unsigned cha
   tasklist = spacechar*("-"|"+"|"*"|[0-9]+.)spacechar+("[ ]"|"[x]")spacechar+;
 
   math_inline1 = "$" ([^$\x00] | escaped_char) ([^$\x00]*([^$\x00] | escaped_char))* "$";
-  math_inline2 = "\\\(" ([^$\x00] | escaped_char1) ([^$\x00]*([^$\x00] | escaped_char1))* "\\\)";
+  // NOTE: Old (greedy) version kept for reference; it could overmatch across multiple \(...\) pairs:
+  // math_inline2 = "\\\(" ([^$\x00] | escaped_char1) ([^$\x00]*([^$\x00] | escaped_char1))* "\\\)";
+  // New version implements a "nearest closing" (non-greedy) semantics by forbidding the closing sequence "\)"
+  // inside the content. We allow ordinary chars except '\' and '$', and allow escapes "\" + any char except ')'.
+  // This prevents consuming "\)" as content so the first "\)" closes the match.
+  math_inline2 = "\\\(" ( [^\\$\x00] | "\\" [^)] )+ "\\\)";
   math_inline = math_inline1 | math_inline2;
   math_block1 = "$$" ([^$\x00]+ | escaped_char+ )* "$$";
   math_block2 = "\\\[" ([^$\x00]+ | escaped_char2+ )* "\\\]";
@@ -131,4 +136,3 @@ bufsize_t _scan_emoji(const unsigned char *p)
     * { return 0; }
   */
 }
-

@@ -4,6 +4,7 @@
 
 #import "StreamPreviewViewController.h"
 #import "ToastView.h"
+#import "AMXMarkdownImageTextAttachment.h"
 CGFloat buttonHeight = 40;
 @implementation CustomButton {
     CAGradientLayer *_gradientLayer;
@@ -330,6 +331,10 @@ CGFloat buttonHeight = 40;
 }
 -(void)onTap:(AMXMarkdownTapType)type content:(id)content gesture:(UITapGestureRecognizer *)gesture attachment:(NSTextAttachment*)attachment tapIndex:(NSUInteger)tapIndex attrString:(NSAttributedString*)attrString
 {
-   
+    if ([attachment isKindOfClass:[AMXMarkdownImageTextAttachment class]]) {
+        AMXMarkdownImageTextAttachment *a = attachment;
+        NSLog(@"~~~~~~~~%@",a.image);
+        NSLog(@"~~~~~~~~%@",a.imageURL);
+    }
 }
 @end

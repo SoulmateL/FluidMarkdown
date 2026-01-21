@@ -30,6 +30,7 @@ typedef enum : NSUInteger {
 } AMXMarkdownPrintState;
 
 @protocol AMXMarkdownTextViewDelegate <NSObject>
+@optional
 /**
  MarkdownView size change
  */
@@ -55,7 +56,7 @@ typedef enum : NSUInteger {
 @end
 
 @interface AMXMarkdownTextView : UITextView
-
+@property (nonatomic, assign, readonly) AMXMarkdownPrintState state;
 @property (nonatomic, weak, nullable) id<AMXMarkdownTextViewDelegate> textViewDelegate;
 /**
  Time interval of printing（unit：s），default is  0.025
@@ -69,6 +70,10 @@ typedef enum : NSUInteger {
  The unique style id of markdownView instance
  */
 @property (nonatomic, strong) NSString* styleId;
+/**
+ Whether to normalize inline math markers \\( \\) to standard $...$ form automatically. Default NO.
+ */
+@property (nonatomic, assign) BOOL regularExpressionEnabled;
 
 /**
  Log model

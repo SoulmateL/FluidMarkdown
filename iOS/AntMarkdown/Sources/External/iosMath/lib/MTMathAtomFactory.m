@@ -4,7 +4,7 @@
 //
 //  Created by Kostub Deshmukh on 8/28/13.
 //  Copyright (C) 2013 MathChat
-//   
+//
 //  This software may be modified and distributed under the terms of the
 //  MIT license. See the LICENSE file for details.
 //
@@ -84,6 +84,11 @@ NSString *const MTSymbolDegree = @"\u00B0"; // \circ
         // show basic cyrillic alphabet. Latin Modern Math font is not good for cyrillic symbols
         return [MTMathAtom atomWithType:kMTMathAtomOrdinary value:chStr];
     } else if (ch < 0x21 || ch > 0x7E) {
+        // Allow a small set of common non-ASCII glyphs that exist in the bundled math fonts.
+        // iosMath otherwise skips non-ASCII characters entirely.
+        if (ch == 0x2030 /* ‰ */) {
+            return [MTMathAtom atomWithType:kMTMathAtomOrdinary value:chStr];
+        }
         if (0x4E00 <= ch && ch <= 0x9FA5) {
             return [MTMathAtom atomWithType:kMTMathAtomVariable value:chStr];
         }
@@ -614,6 +619,8 @@ NSString *const MTSymbolDegree = @"\u00B0"; // \circ
                      
                      
                      // Relations
+                     @"lt" : [MTMathAtom atomWithType:kMTMathAtomRelation value:@"<"],
+                     @"gt" : [MTMathAtom atomWithType:kMTMathAtomRelation value:@">"],
                      @"leq" : [MTMathAtom atomWithType:kMTMathAtomRelation value:MTSymbolLessEqual],
                      @"geq" : [MTMathAtom atomWithType:kMTMathAtomRelation value:MTSymbolGreaterEqual],
                      @"neq" : [MTMathAtom atomWithType:kMTMathAtomRelation value:MTSymbolNotEqual],
@@ -767,6 +774,7 @@ NSString *const MTSymbolDegree = @"\u00B0"; // \circ
                      @"vert" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"|"],
                      @"ldots" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"\u2026"],
                      @"prime" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"\u2032"],
+                     @"permil" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"\u2030"],
                      @"hbar" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"\u210F"],
                      @"Im" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"\u2111"],
                      @"ell" : [MTMathAtom atomWithType:kMTMathAtomOrdinary value:@"\u2113"],
@@ -877,6 +885,8 @@ NSString *const MTSymbolDegree = @"\u00B0"; // \circ
                     @"to" : @"rightarrow",
                     @"iff" : @"Longleftrightarrow",
                     @"AA" : @"angstrom",
+                    @"perthousand" : @"permil",
+                    @"textperthousand" : @"permil",
                     };
     }
     return aliases;
